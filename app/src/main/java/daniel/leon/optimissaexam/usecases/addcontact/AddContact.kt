@@ -91,7 +91,7 @@ fun CellphoneInputText() {
 
     TextField(
         value = text,
-        onValueChange = {text = it},
+        onValueChange = { if (it.length <= 10) text = it },
         modifier = Modifier.fillMaxWidth(),
         label = { Text("Ingresa tu teléfono celular")},
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
@@ -130,31 +130,18 @@ fun AddBtn(context: Context,) {
         registro.put("id", globalId)
         registro.put("phone", globaPhone)
         registro.put("username", globalName)
-        bd.insert("contactos", null, registro)
-
-
-
-        /*val fila = bd.rawQuery("select id,phone, username from contactos", null)
+        val fila = bd.rawQuery("select id,phone, username from contactos where id=${globalId}", null)
         if (fila.moveToFirst()) {
-            var contactsList: MutableList<ContactsData> = mutableListOf()
-            do {
-                contactsList =  mutableListOf(
-                    ContactsData(fila.getString(0), fila.getString(1), fila.getString(2))
-                )
-            } while (fila.moveToNext())
-
-            for (contact  in contactsList) {
-                Log.i("info recibida:", "${contact.idUser}, ${contact.phone}, ${contact.userName}")
-            }
-            //Log.i("info recibida:", "${contact.idUser}, ${fila.getString(1)}, ${fila.getString(2)}")
+            Toast.makeText(context, "El contacto ya existe", Toast.LENGTH_SHORT).show()
         } else {
-            Log.w("Error", "no se pudo almacenar")
-        }*/
+            bd.insert("contactos", null, registro)
+            Toast.makeText(context, "Contacto registrado", Toast.LENGTH_SHORT).show()
+        }
         bd.close()
 
-        globalId = ""
+        /*globalId = ""
         globaPhone = ""
-        globalName = ""
+        globalName = ""*/
         }) {
         Text("Agregar")
     }
