@@ -130,7 +130,7 @@ fun AddBtn(context: Context,) {
         registro.put("id", globalId)
         registro.put("phone", globaPhone)
         registro.put("username", globalName)
-        val fila = bd.rawQuery("select id,phone, username from contactos where id=${globalId}", null)
+        val fila = bd.rawQuery("select * from contactos where id=${globalId}", null)
         if (fila.moveToFirst()) {
             Toast.makeText(context, "El contacto ya existe", Toast.LENGTH_SHORT).show()
         } else {

@@ -9,20 +9,26 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import daniel.leon.optimissaexam.model.domain.ContactsData
 import daniel.leon.optimissaexam.provider.preferences.AdminSQLiteOpenHelper
 
-private var globalId: String = ""
-
 @Composable
-fun ShowContacts(context: Context) {
+fun ShowContacts(context: Context, navController: NavController) {
     Scaffold(topBar = {
         TopAppBar() {
+            Icon(imageVector = Icons.Default.ArrowBack,
+                contentDescription = "Arrow Back",
+                modifier = Modifier.clickable {
+                    navController.popBackStack()
+                })
+            Spacer(modifier = Modifier.width(8.dp))
             Text("Mostrar Contactos")
         }
     }) {
@@ -37,15 +43,16 @@ fun MainComponents(context: Context) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        SearchInputText()
+        SearchInputText(context)
         Spacer(modifier = Modifier.height(16.dp))
-        SearchContactList(context)
+        ShowContactList("", context, false)
     }
 }
 
 @Composable
-fun SearchInputText() {
+fun SearchInputText(context: Context) {
     var text by remember { mutableStateOf("") }
+    var isSearching by remember { mutableStateOf(false) }
     TextField(
         value = text,
         onValueChange = {text = it},
@@ -55,25 +62,31 @@ fun SearchInputText() {
             Icon(imageVector = Icons.Default.Search,
                 "search",
                 modifier = Modifier.clickable {
-                    globalId = text
+                    isSearching = true
                 }
             )
         },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
     )
+
+    if (isSearching) {
+        ShowContactList(text, context, isSearching)
+    }
 }
 
 @Composable
-fun SearchContactList(context: Context) {
+fun ShowContactList(searchId: String?, context: Context, isSearching: Boolean) {
     val sqlAdmin = AdminSQLiteOpenHelper(context, "contactos", null, 1)
     val bd = sqlAdmin.writableDatabase
-    var fila = bd.rawQuery("select id,phone, username from contactos", null)
-    if(globalId != "") {
-        fila = bd.rawQuery("select id,phone, username from contactos where id=${globalId}", null)
-    }
+    var fila = bd.rawQuery("select * from contactos", null)
+    /*if (searchId != "" && isSearching) {
+        fila = bd.rawQuery("select * from contactos where id=${searchId}", null)
+    }*/
 
     var contactsList: MutableList<ContactsData>
+
     val listContact = arrayListOf<MutableList<ContactsData>>()
+
     if (fila.moveToFirst()) {
         do {
             contactsList =  mutableListOf(
@@ -85,9 +98,10 @@ fun SearchContactList(context: Context) {
         LazyContacts(listContact)
 
     } else {
-        Log.w("Error", "no se pudo almacenar")
+        Log.e("Error", "no se pudo almacenar")
     }
 }
+
 
 @Composable
 fun LazyContacts(listContact: ArrayList<MutableList<ContactsData>>) {

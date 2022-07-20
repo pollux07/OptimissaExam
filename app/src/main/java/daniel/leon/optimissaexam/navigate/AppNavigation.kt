@@ -17,7 +17,7 @@ fun AppNavigation(context: Context) {
             AddContact(context, navController)
         }
         composable(route = AppScreens.ShowContacts.route) {
-            ShowContacts(context)
+            ShowContacts(context, navController)
         }
     }
 }
