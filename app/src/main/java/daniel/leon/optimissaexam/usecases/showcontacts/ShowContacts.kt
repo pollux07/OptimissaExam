@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -71,45 +72,41 @@ fun SearchInputText(context: Context) {
 
     if (isSearching) {
         ShowContactList(text, context, isSearching)
+        isSearching = false
     }
 }
 
 @Composable
-fun ShowContactList(searchId: String?, context: Context, isSearching: Boolean) {
+fun ShowContactList(searchId: String, context: Context, isSearching: Boolean) {
+    val contactsList = remember { mutableStateListOf<ContactsData>() }
     val sqlAdmin = AdminSQLiteOpenHelper(context, "contactos", null, 1)
     val bd = sqlAdmin.writableDatabase
     var fila = bd.rawQuery("select * from contactos", null)
-    /*if (searchId != "" && isSearching) {
-        fila = bd.rawQuery("select * from contactos where id=${searchId}", null)
-    }*/
+    if (searchId != "" && isSearching) {
+        fila = bd.rawQuery("select * from contactos where id = '${searchId}'", null)
+        //contactsList.clear()
+    }
 
-    var contactsList: MutableList<ContactsData>
-
-    val listContact = arrayListOf<MutableList<ContactsData>>()
-
-    if (fila.moveToFirst()) {
-        do {
-            contactsList =  mutableListOf(
-                ContactsData(fila.getString(0), fila.getString(1), fila.getString(2))
-            )
-            listContact.add(contactsList)
-        } while (fila.moveToNext())
-
-        LazyContacts(listContact)
-
+    if (contactsList.size == 0) {
+        if (fila.moveToFirst()) {
+            do {
+                val contact = ContactsData(fila.getString(0), fila.getString(1), fila.getString(2))
+                contactsList.add(contact)
+            } while (fila.moveToNext())
+        } else {
+            Log.e("Error", "no se pudo almacenar")
+        }
     } else {
-        Log.e("Error", "no se pudo almacenar")
+        LazyContacts(contactsList)
     }
 }
 
 
 @Composable
-fun LazyContacts(listContact: ArrayList<MutableList<ContactsData>>) {
-    for (item  in listContact) {
-        LazyColumn {
-            items(item) { contact ->
-                ContactInfo(contact)
-            }
+fun LazyContacts(listContact: SnapshotStateList<ContactsData>) {
+    LazyColumn {
+        items(listContact) { contact ->
+            ContactInfo(contact)
         }
     }
 }
