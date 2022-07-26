@@ -1,24 +1,34 @@
 package daniel.leon.optimissaexam.usecases.showcontacts
 
 import android.content.Context
+import android.database.Cursor
 import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import daniel.leon.optimissaexam.R
 import daniel.leon.optimissaexam.model.domain.ContactsData
 import daniel.leon.optimissaexam.provider.preferences.AdminSQLiteOpenHelper
+import java.util.*
+import kotlin.collections.ArrayList
 
 @Composable
 fun ShowContacts(context: Context, navController: NavController) {
@@ -44,72 +54,104 @@ fun MainComponents(context: Context) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        SearchInputText(context)
+        val textState = remember { mutableStateOf(TextFieldValue("")) }
+        SearchView(textState)
         Spacer(modifier = Modifier.height(16.dp))
-        ShowContactList("", context, false)
+        ShowContactList( context, state = textState)
     }
 }
 
+
+
 @Composable
-fun SearchInputText(context: Context) {
-    var text by remember { mutableStateOf("") }
-    var isSearching by remember { mutableStateOf(false) }
+fun SearchView(state: MutableState<TextFieldValue>) {
     TextField(
-        value = text,
-        onValueChange = {text = it},
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text("Buscar contacto")},
-        trailingIcon = {
-            Icon(imageVector = Icons.Default.Search,
-                "search",
-                modifier = Modifier.clickable {
-                    isSearching = true
-                }
+        value = state.value,
+        onValueChange = { value ->
+            state.value = value
+        },
+        modifier = Modifier
+            .fillMaxWidth(),
+        textStyle = TextStyle(color = Color.White, fontSize = 18.sp),
+        leadingIcon = {
+            Icon(
+                Icons.Default.Search,
+                contentDescription = "",
+                modifier = Modifier
+                    .padding(15.dp)
+                    .size(24.dp)
             )
         },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+        trailingIcon = {
+            if (state.value != TextFieldValue("")) {
+                IconButton(
+                    onClick = {
+                        state.value =
+                            TextFieldValue("") // Remove text from TextField when you press the 'X' icon
+                    }
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "",
+                        modifier = Modifier
+                            .padding(15.dp)
+                            .size(24.dp)
+                    )
+                }
+            }
+        },
+        singleLine = true,
+        shape = RectangleShape, // The TextFiled has rounded corners top left and right by default
+        colors = TextFieldDefaults.textFieldColors(
+            textColor = Color.White,
+            cursorColor = Color.White,
+            leadingIconColor = Color.White,
+            trailingIconColor = Color.White,
+            backgroundColor = colorResource(id = R.color.purple_500),
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent
+        )
     )
+}
 
-    if (isSearching) {
-        ShowContactList(text, context, isSearching)
-        isSearching = false
-    }
+@Preview(showBackground = true)
+@Composable
+fun SearchViewPreview() {
+    val textState = remember { mutableStateOf(TextFieldValue("")) }
+    SearchView(textState)
 }
 
 @Composable
-fun ShowContactList(searchId: String, context: Context, isSearching: Boolean) {
-    val contactsList = remember { mutableStateListOf<ContactsData>() }
-    val sqlAdmin = AdminSQLiteOpenHelper(context, "contactos", null, 1)
-    val bd = sqlAdmin.writableDatabase
-    var fila = bd.rawQuery("select * from contactos", null)
-    if (searchId != "" && isSearching) {
-        fila = bd.rawQuery("select * from contactos where id = '${searchId}'", null)
-        //contactsList.clear()
-    }
+fun ShowContactList(
+    context: Context,
+    state: MutableState<TextFieldValue>
+) {
+    val contacst =  getContactsList(context)
+    var filteredContacts: ArrayList<ContactsData>
 
-    if (contactsList.size == 0) {
-        if (fila.moveToFirst()) {
-            do {
-                val contact = ContactsData(fila.getString(0), fila.getString(1), fila.getString(2))
-                contactsList.add(contact)
-            } while (fila.moveToNext())
-        } else {
-            Log.e("Error", "no se pudo almacenar")
-        }
-    } else {
-        LazyContacts(contactsList)
-    }
-}
-
-
-@Composable
-fun LazyContacts(listContact: SnapshotStateList<ContactsData>) {
     LazyColumn {
-        items(listContact) { contact ->
-            ContactInfo(contact)
+        val searchedText = state.value.text
+        filteredContacts = if (searchedText.isEmpty()) {
+            contacst
+            } else {
+                val resultList = ArrayList<ContactsData> ()
+                for (contact in contacst) {
+                    if (contact.idUser.lowercase(Locale.getDefault())
+                            .contains(searchedText.lowercase(Locale.getDefault()))
+                    ) {
+                        resultList.add(contact)
+                    }
+                }
+                resultList
+            }
+            items(filteredContacts) { contact ->
+                ContactInfo(contact)
+            }
         }
-    }
+
 }
+
 
 @Composable
 fun ContactInfo(contact: ContactsData) {
@@ -124,4 +166,22 @@ fun ContactInfo(contact: ContactsData) {
 @Composable
 fun MyText(text: String) {
     Text(text)
+}
+
+fun getContactsList(context: Context): ArrayList<ContactsData> {
+    val contactsArray =ArrayList<ContactsData>()
+    val sqlAdmin = AdminSQLiteOpenHelper(context, "contactos", null, 1)
+    val bd = sqlAdmin.writableDatabase
+    val fila = bd.rawQuery("select * from contactos", null)
+    if (contactsArray.isEmpty()) {
+        if (fila.moveToFirst()) {
+            do {
+                val contact = ContactsData(fila.getString(0), fila.getString(1), fila.getString(2))
+                contactsArray.add(contact)
+            } while (fila.moveToNext())
+        } else {
+            Log.e("Error", "no se pudo almacenar")
+        }
+    }
+    return contactsArray
 }
