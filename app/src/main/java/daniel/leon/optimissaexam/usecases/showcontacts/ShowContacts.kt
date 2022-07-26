@@ -115,13 +115,6 @@ fun SearchView(state: MutableState<TextFieldValue>) {
     )
 }
 
-@Preview(showBackground = true)
-@Composable
-fun SearchViewPreview() {
-    val textState = remember { mutableStateOf(TextFieldValue("")) }
-    SearchView(textState)
-}
-
 @Composable
 fun ShowContactList(
     context: Context,
